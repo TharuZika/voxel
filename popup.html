@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Voxel</title>
+  <link rel="stylesheet" href="ui.css">
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Voxel</h1>
+      <p class="tagline">Page reader</p>
+    </div>
+
+    <div class="status-section">
+      <div class="status-indicator">
+        <span class="status-dot" id="statusDot"></span>
+        <span class="status-text" id="statusText">Ready</span>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="explainBtn" class="primary-btn">
+        <span>Explain Page</span>
+      </button>
+
+      <div class="playback-controls" id="playbackControls" style="display: none;">
+        <button id="stopBtn" class="secondary-btn">
+          <span class="btn-icon">⏹️</span>
+          <span>Stop</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="info-section" id="infoSection" style="display: none;">
+      <p id="infoText"></p>
+    </div>
+
+    <div class="footer">
+      <small>Developed by <a href="https://github.com/tharuzika">TharuZika</a></small>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>
