@@ -274,7 +274,7 @@ function hideInfo() {
 }
 
 function handleError(error) {
-    console.error('Voxel error:', error);
+    console.error('Nova AI error:', error);
     stopStatusCycling();
     setStatus('error', 'Error');
     showInfo(error.message);

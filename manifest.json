@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Voxel - Web Page Audio Reader",
+    "name": "Nova AI - Web Page AI Powered Audio Reader",
     "version": "0.0.1",
     "description": "Read and explain web pages aloud with summarization",
     "permissions": [

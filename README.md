@@ -1,4 +1,4 @@
-# Voxel - Web Page Audio Reader
+# Nova AI - Web Page Audio Reader
 
 A Chrome extension that reads and explains web pages aloud using AI-powered summarization with Google Gemini.
 
@@ -16,9 +16,9 @@ A Chrome extension that reads and explains web pages aloud using AI-powered summ
 1. Open Chrome and navigate to `chrome://extensions/`
 2. Enable "Developer mode" (toggle in top-right corner)
 3. Click "Load unpacked"
-4. Select the `voxel` folder
+4. Select the `Nova AI` folder
 
-The Voxel icon should now appear in your Chrome toolbar!
+The Nova AI icon should now appear in your Chrome toolbar!
 
 ### 2. Set Up the Backend
 
@@ -58,7 +58,7 @@ The server should run on `http://localhost:3000`
 
 2. **Navigate to any web page** you want explained
 
-3. **Click the Voxel extension icon** in your toolbar
+3. **Click the Nova AI extension icon** in your toolbar
 
 4. **Click "Explain Page"** button
 

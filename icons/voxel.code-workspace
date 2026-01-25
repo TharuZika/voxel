@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "voxel"
+		},
+		{
+			"path": "voxel-backend"
+		}
+	],
+	"settings": {}
+}
