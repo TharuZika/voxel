@@ -6,12 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Voxel</title>
   <link rel="stylesheet" href="ui.css" />
+  <link rel="icon" type="image/x-icon" href="icons/favicon.ico" />
 </head>
 
 <body>
   <div class="container">
     <header class="header">
-      <h1>Nova AI</h1>
+      <h1>Voxel</h1>
       <span class="tagline">AI Powered Page Reader</span>
     </header>
 
@@ -20,22 +21,32 @@
         <span class="status-dot status-idle" id="statusDot"></span>
         <span class="status-text" id="statusText">Ready</span>
       </div>
+      <div class="status-detail" id="statusDetail"></div>
     </section>
 
     <section class="controls">
-      <div class="controls-group">
+      <div class="controls-group" id="initialControls">
         <button id="explainBtn" class="primary-btn">
           <span class="btn-icon">▶</span>
           Explain Page
         </button>
-        <select id="voiceSelector" class="voice-selector">
-          <option value="default">Default Voice</option>
-          <option value="qwen">Qwen Presenter</option>
-        </select>
+        <div class="voice-selection-container">
+          <select id="voiceSelector" class="voice-selector">
+            <option value="qwen" selected>Presenter (Quality)</option>
+            <option value="default">Default (Faster)</option>
+          </select>
+          <div class="info-icon" data-tooltip="Default mode is faster">
+            ℹ️
+          </div>
+        </div>
       </div>
 
       <div class="playback-controls" id="playbackControls" style="display: none;">
-        <button id="stopBtn" class="secondary-btn">
+        <button id="pauseBtn" class="secondary-btn"
+          style="margin-right: 10px; padding-left: 10px; padding-right: 10px;">
+          ⏸ Pause
+        </button>
+        <button id="stopBtn" class="secondary-btn" style="padding-left: 10px; padding-right: 10px;">
           ⏹ Stop
         </button>
       </div>

@@ -1,24 +1,48 @@
 const explainBtn = document.getElementById('explainBtn');
 const stopBtn = document.getElementById('stopBtn');
+const pauseBtn = document.getElementById('pauseBtn');
 const statusDot = document.getElementById('statusDot');
 const statusText = document.getElementById('statusText');
+const statusDetail = document.getElementById('statusDetail');
 const playbackControls = document.getElementById('playbackControls');
+const initialControls = document.getElementById('initialControls');
 const infoSection = document.getElementById('infoSection');
 const infoText = document.getElementById('infoText');
 
 let isPlaying = false;
+let isPaused = false;
 let currentUtterance = null;
 let currentAudio = null;
+let statusInterval = null;
+
+const LOADING_MESSAGES = [
+    "Steeping the data for maximum flavor...",
+    "Whisking the paragraphs into a light foam...",
+    "Thinking... thinking... still thinking...",
+    "Consulting the digital oracles...",
+    "Translating internet to human...",
+    "Parsing the matrix...",
+    "Fetching fresh words from the cloud...",
+    "Asking Gemini nicely...",
+    "Trying to remember where I put the summary...",
+    "Asking the AI to use its 'inside voice'...",
+    "Warming up vocal cords...",
+    "Adding a pinch of logic...",
+    "Sifting through the fluff...",
+    "Teaching the robot how to pronounce 'supercalifragilistic'...",
+    "Waiting for the kettle to whistle...",
+    "Plating the insights..."
+];
 
 explainBtn.addEventListener('click', handleExplainClick);
 stopBtn.addEventListener('click', handleStopClick);
+pauseBtn.addEventListener('click', handlePauseClick);
 
 async function handleExplainClick() {
     try {
         stopSpeech();
-
-        setStatus('loading', 'Analyzing page...');
-        explainBtn.disabled = true;
+        startStatusCycling();
+        initialControls.style.display = 'none';
         hideInfo();
 
         chrome.runtime.sendMessage(
@@ -29,6 +53,25 @@ async function handleExplainClick() {
     } catch (error) {
         handleError(error);
     }
+}
+
+function startStatusCycling() {
+    let index = 0;
+    setStatus('loading', 'Analyzing...');
+    statusDetail.textContent = LOADING_MESSAGES[0];
+
+    statusInterval = setInterval(() => {
+        index = (index + 1) % LOADING_MESSAGES.length;
+        statusDetail.textContent = LOADING_MESSAGES[index];
+    }, 4000);
+}
+
+function stopStatusCycling() {
+    if (statusInterval) {
+        clearInterval(statusInterval);
+        statusInterval = null;
+    }
+    statusDetail.textContent = '';
 }
 
 function handleAnalysisResponse(response) {
@@ -42,13 +85,10 @@ function handleAnalysisResponse(response) {
         return;
     }
 
-    // Play the explanation
     playExplanation(response.explanation);
 }
 
-
-
-const BACKEND_URL = 'http://localhost:3000'; // Define backend URL here as well or import
+const BACKEND_URL = 'http://localhost:3000';
 
 async function playExplanation(text) {
     if (!text) {
@@ -68,10 +108,6 @@ async function playExplanation(text) {
 
 async function playRemoteAudio(text) {
     try {
-        setStatus('loading', 'Generating Audio...');
-        explainBtn.disabled = true;
-        showPlaybackControls(); // Show controls so stop works
-
         const response = await fetch(`${BACKEND_URL}/tts`, {
             method: 'POST',
             headers: {
@@ -99,17 +135,16 @@ async function playRemoteAudio(text) {
         currentAudio = new Audio(url);
 
         currentAudio.onplay = () => {
+            stopStatusCycling();
             isPlaying = true;
-            setStatus('playing', 'Playing (Qwen)...');
-            explainBtn.disabled = false;
+            isPaused = false;
+            setStatus('playing', 'Playing (Presenter)...');
+            showPlaybackControls();
         };
 
         currentAudio.onended = () => {
-            isPlaying = false;
-            setStatus('idle', 'Ready');
-            hidePlaybackControls();
+            handleStopClick();
             URL.revokeObjectURL(url);
-            currentAudio = null;
         };
 
         currentAudio.onerror = (e) => {
@@ -124,37 +159,28 @@ async function playRemoteAudio(text) {
     }
 }
 
-// Rename existing logic to playLocalPlayback and adjust
 function playLocalPlayback(text) {
+    stopStatusCycling();
+
     window.speechSynthesis.cancel();
     currentUtterance = new SpeechSynthesisUtterance(text);
-    // ... existing configuration ...
     currentUtterance.rate = 1.0;
     currentUtterance.pitch = 1.0;
     currentUtterance.volume = 1.0;
 
     currentUtterance.onstart = () => {
         isPlaying = true;
+        isPaused = false;
         setStatus('playing', 'Playing...');
         showPlaybackControls();
-        explainBtn.disabled = false;
     };
 
     currentUtterance.onend = () => {
-        isPlaying = false;
-        setStatus('idle', 'Ready');
-        hidePlaybackControls();
+        handleStopClick();
     };
 
     currentUtterance.onerror = (event) => {
-        if (currentUtterance !== event.target) {
-            return;
-        }
         if (event.error === 'interrupted' || event.error === 'canceled') {
-            setStatus('idle', 'Stopped');
-            hidePlaybackControls();
-            isPlaying = false;
-            currentUtterance = null;
         } else {
             handleError(new Error(`Speech error: ${event.error}`));
         }
@@ -163,20 +189,54 @@ function playLocalPlayback(text) {
     window.speechSynthesis.speak(currentUtterance);
 }
 
+function handlePauseClick() {
+    if (isPaused) {
+        resumeSpeech();
+    } else {
+        pauseSpeech();
+    }
+}
+
+function pauseSpeech() {
+    if (currentAudio) {
+        currentAudio.pause();
+    } else if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.pause();
+    }
+    isPaused = true;
+    pauseBtn.textContent = '▶ Resume';
+    setStatus('playing', 'Paused');
+}
+
+function resumeSpeech() {
+    if (currentAudio) {
+        currentAudio.play();
+    } else if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+    }
+    isPaused = false;
+    pauseBtn.textContent = '⏸ Pause';
+    setStatus('playing', 'Playing...');
+}
+
 function handleStopClick() {
     stopSpeech();
-    setStatus('idle', 'Stopped');
+    setStatus('idle', 'Ready');
     hidePlaybackControls();
 }
 
 function stopSpeech() {
+    stopStatusCycling();
     window.speechSynthesis.cancel();
     if (currentAudio) {
         currentAudio.pause();
         currentAudio = null;
     }
     isPlaying = false;
+    isPaused = false;
     currentUtterance = null;
+
+    if (pauseBtn) pauseBtn.textContent = '⏸ Pause';
 }
 
 function setStatus(state, text) {
@@ -196,19 +256,18 @@ function setStatus(state, text) {
 
 function showPlaybackControls() {
     playbackControls.style.display = 'flex';
+    initialControls.style.display = 'none';
 }
-
 
 function hidePlaybackControls() {
     playbackControls.style.display = 'none';
+    initialControls.style.display = 'flex';
 }
-
 
 function showInfo(message) {
     infoText.textContent = message;
     infoSection.style.display = 'block';
 }
-
 
 function hideInfo() {
     infoSection.style.display = 'none';
@@ -216,13 +275,13 @@ function hideInfo() {
 
 function handleError(error) {
     console.error('Voxel error:', error);
-
+    stopStatusCycling();
     setStatus('error', 'Error');
     showInfo(error.message);
-
-    explainBtn.disabled = false;
-    hidePlaybackControls();
     stopSpeech();
+    hidePlaybackControls();
+    initialControls.style.display = 'flex';
+    explainBtn.disabled = false;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
