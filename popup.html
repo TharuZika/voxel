@@ -2,46 +2,55 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Voxel</title>
-  <link rel="stylesheet" href="ui.css">
+  <link rel="stylesheet" href="ui.css" />
 </head>
 
 <body>
   <div class="container">
-    <div class="header">
-      <h1>Voxel</h1>
-      <p class="tagline">Page reader</p>
-    </div>
+    <header class="header">
+      <h1>Nova AI</h1>
+      <span class="tagline">AI Powered Page Reader</span>
+    </header>
 
-    <div class="status-section">
+    <section class="status-section">
       <div class="status-indicator">
-        <span class="status-dot" id="statusDot"></span>
+        <span class="status-dot status-idle" id="statusDot"></span>
         <span class="status-text" id="statusText">Ready</span>
       </div>
-    </div>
+    </section>
 
-    <div class="controls">
-      <button id="explainBtn" class="primary-btn">
-        <span>Explain Page</span>
-      </button>
+    <section class="controls">
+      <div class="controls-group">
+        <button id="explainBtn" class="primary-btn">
+          <span class="btn-icon">▶</span>
+          Explain Page
+        </button>
+        <select id="voiceSelector" class="voice-selector">
+          <option value="default">Default Voice</option>
+          <option value="qwen">Qwen Presenter</option>
+        </select>
+      </div>
 
       <div class="playback-controls" id="playbackControls" style="display: none;">
         <button id="stopBtn" class="secondary-btn">
-          <span class="btn-icon">⏹️</span>
-          <span>Stop</span>
+          ⏹ Stop
         </button>
       </div>
-    </div>
+    </section>
 
-    <div class="info-section" id="infoSection" style="display: none;">
+    <section class="info-section" id="infoSection" style="display: none;">
       <p id="infoText"></p>
-    </div>
+    </section>
 
-    <div class="footer">
-      <small>Developed by <a href="https://github.com/tharuzika">TharuZika</a></small>
-    </div>
+    <footer class="footer">
+      <small>
+        Built by
+        <a href="https://github.com/tharuzika" target="_blank">TharuZika</a>
+      </small>
+    </footer>
   </div>
 
   <script src="popup.js"></script>

@@ -8,6 +8,7 @@ const infoText = document.getElementById('infoText');
 
 let isPlaying = false;
 let currentUtterance = null;
+let currentAudio = null;
 
 explainBtn.addEventListener('click', handleExplainClick);
 stopBtn.addEventListener('click', handleStopClick);
@@ -45,14 +46,89 @@ function handleAnalysisResponse(response) {
     playExplanation(response.explanation);
 }
 
-function playExplanation(text) {
+
+
+const BACKEND_URL = 'http://localhost:3000'; // Define backend URL here as well or import
+
+async function playExplanation(text) {
     if (!text) {
         handleError(new Error('No explanation text received'));
         return;
     }
 
+    const voiceSelector = document.getElementById('voiceSelector');
+    const selectedVoice = voiceSelector ? voiceSelector.value : 'default';
+
+    if (selectedVoice === 'qwen') {
+        await playRemoteAudio(text);
+    } else {
+        playLocalPlayback(text);
+    }
+}
+
+async function playRemoteAudio(text) {
+    try {
+        setStatus('loading', 'Generating Audio...');
+        explainBtn.disabled = true;
+        showPlaybackControls(); // Show controls so stop works
+
+        const response = await fetch(`${BACKEND_URL}/tts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: text,
+                style: "Speak like a professional news presenter"
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`TTS Error: ${response.statusText}`);
+        }
+
+        const arrayBuffer = await response.arrayBuffer();
+        const blob = new Blob([arrayBuffer], { type: 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+
+        if (currentAudio) {
+            currentAudio.pause();
+            currentAudio = null;
+        }
+
+        currentAudio = new Audio(url);
+
+        currentAudio.onplay = () => {
+            isPlaying = true;
+            setStatus('playing', 'Playing (Qwen)...');
+            explainBtn.disabled = false;
+        };
+
+        currentAudio.onended = () => {
+            isPlaying = false;
+            setStatus('idle', 'Ready');
+            hidePlaybackControls();
+            URL.revokeObjectURL(url);
+            currentAudio = null;
+        };
+
+        currentAudio.onerror = (e) => {
+            console.error("Audio playback error", e);
+            handleError(new Error("Audio playback failed"));
+        };
+
+        await currentAudio.play();
+
+    } catch (error) {
+        handleError(error);
+    }
+}
+
+// Rename existing logic to playLocalPlayback and adjust
+function playLocalPlayback(text) {
     window.speechSynthesis.cancel();
     currentUtterance = new SpeechSynthesisUtterance(text);
+    // ... existing configuration ...
     currentUtterance.rate = 1.0;
     currentUtterance.pitch = 1.0;
     currentUtterance.volume = 1.0;
@@ -71,7 +147,17 @@ function playExplanation(text) {
     };
 
     currentUtterance.onerror = (event) => {
-        handleError(new Error(`Speech error: ${event.error}`));
+        if (currentUtterance !== event.target) {
+            return;
+        }
+        if (event.error === 'interrupted' || event.error === 'canceled') {
+            setStatus('idle', 'Stopped');
+            hidePlaybackControls();
+            isPlaying = false;
+            currentUtterance = null;
+        } else {
+            handleError(new Error(`Speech error: ${event.error}`));
+        }
     };
 
     window.speechSynthesis.speak(currentUtterance);
@@ -79,12 +165,16 @@ function playExplanation(text) {
 
 function handleStopClick() {
     stopSpeech();
-    setStatus('idle', 'Ready');
+    setStatus('idle', 'Stopped');
     hidePlaybackControls();
 }
 
 function stopSpeech() {
     window.speechSynthesis.cancel();
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio = null;
+    }
     isPlaying = false;
     currentUtterance = null;
 }
