@@ -45,10 +45,44 @@ async function handleExplainClick() {
         initialControls.style.display = 'none';
         hideInfo();
 
-        chrome.runtime.sendMessage(
-            { action: 'analyzeCurrentPage' },
-            handleAnalysisResponse
-        );
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab) throw new Error("No active tab found");
+
+        chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 60 }, async (dataUrl) => {
+            if (chrome.runtime.lastError) {
+                handleError(new Error(chrome.runtime.lastError.message));
+                return;
+            }
+
+            if (!dataUrl) {
+                handleError(new Error("Failed to capture snapshot"));
+                return;
+            }
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mode: 'image',
+                        image: dataUrl,
+                        url: tab.url,
+                        title: tab.title
+                    })
+                });
+
+                if (!response.ok) {
+                    const errParams = await response.json().catch(() => ({}));
+                    throw new Error(errParams.error || `Server error: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                handleAnalysisResponse({ success: true, explanation: data.explanationText });
+
+            } catch (netError) {
+                handleError(netError);
+            }
+        });
 
     } catch (error) {
         handleError(error);
