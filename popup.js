@@ -1,141 +1,203 @@
-const explainBtn = document.getElementById('explainBtn');
-const stopBtn = document.getElementById('stopBtn');
-const pauseBtn = document.getElementById('pauseBtn');
-const statusDot = document.getElementById('statusDot');
-const statusText = document.getElementById('statusText');
-const statusDetail = document.getElementById('statusDetail');
-const playbackControls = document.getElementById('playbackControls');
-const initialControls = document.getElementById('initialControls');
-const infoSection = document.getElementById('infoSection');
-const infoText = document.getElementById('infoText');
+const BACKEND_URL = 'http://localhost:3000';
 
-let isPlaying = false;
-let isPaused = false;
-let currentUtterance = null;
-let currentAudio = null;
-let statusInterval = null;
+let state = {
+    currentScreen: 'screen-home',
+    isPlaying: false,
+    isPaused: false,
+    currentUtterance: null,
+    currentAudio: null,
+    currentText: null,
+    settings: {
+        voice: 'qwen',
+        speed: 1.0
+    }
+};
 
-const LOADING_MESSAGES = [
-    "Steeping the data for maximum flavor...",
-    "Whisking the paragraphs into a light foam...",
-    "Thinking... thinking... still thinking...",
-    "Consulting the digital oracles...",
-    "Translating internet to human...",
-    "Parsing the matrix...",
-    "Fetching fresh words from the cloud...",
-    "Asking Gemini nicely...",
-    "Trying to remember where I put the summary...",
-    "Asking the AI to use its 'inside voice'...",
-    "Warming up vocal cords...",
-    "Adding a pinch of logic...",
-    "Sifting through the fluff...",
-    "Teaching the robot how to pronounce 'supercalifragilistic'...",
-    "Waiting for the kettle to whistle...",
-    "Plating the insights..."
-];
+document.addEventListener('DOMContentLoaded', () => {
+    loadSettings();
+    setupEventListeners();
+    showScreen('screen-home');
+});
 
-explainBtn.addEventListener('click', handleExplainClick);
-stopBtn.addEventListener('click', handleStopClick);
-pauseBtn.addEventListener('click', handlePauseClick);
+function loadSettings() {
+    const savedVoice = localStorage.getItem('voxel_voice');
+    const savedSpeed = localStorage.getItem('voxel_speed');
 
-async function handleExplainClick() {
-    try {
+    if (savedVoice) state.settings.voice = savedVoice;
+    if (savedSpeed) state.settings.speed = parseFloat(savedSpeed);
+
+    const voiceSelector = document.getElementById('voiceSelector');
+    const speedSlider = document.getElementById('speedSlider');
+    const speedValue = document.getElementById('speedValue');
+
+    if (voiceSelector) voiceSelector.value = state.settings.voice;
+    if (speedSlider) {
+        speedSlider.value = state.settings.speed;
+        speedValue.textContent = getSpeedLabel(state.settings.speed);
+    }
+}
+
+function getSpeedLabel(val) {
+    if (val == 0.5) return 'Slow';
+    if (val == 2) return 'Fast';
+    if (val == 1) return 'Normal';
+    return `${val}x`;
+}
+
+function setupEventListeners() {
+    document.getElementById('headerSettingsBtn').addEventListener('click', () => showScreen('screen-settings'));
+    document.getElementById('headerCloseBtn').addEventListener('click', () => window.close());
+    document.getElementById('analyzeBtn').addEventListener('click', handleAnalyzeClick);
+    document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+        const oldVoice = state.settings.voice;
+        saveSettings();
+        const newVoice = state.settings.voice;
+
+        if (state.currentText) {
+            const isRemoteActive = !!state.currentAudio;
+            const isLocalActive = !!(state.currentUtterance && window.speechSynthesis.speaking);
+            if (oldVoice !== newVoice) {
+                playExplanation(state.currentText);
+                return;
+            }
+
+            if (newVoice === 'qwen' && isRemoteActive) {
+                showScreen('screen-audio');
+                state.currentAudio.playbackRate = state.settings.speed;
+            } else if (newVoice === 'default' && isLocalActive) {
+                playExplanation(state.currentText);
+            } else {
+                showScreen('screen-audio');
+            }
+
+        } else {
+            showScreen('screen-home');
+        }
+    });
+
+    document.getElementById('speedSlider').addEventListener('input', (e) => {
+        const val = e.target.value;
+        document.getElementById('speedValue').textContent = getSpeedLabel(val);
+    });
+
+    document.getElementById('audioStopBtn').addEventListener('click', () => {
         stopSpeech();
-        startStatusCycling();
-        initialControls.style.display = 'none';
-        hideInfo();
+        showScreen('screen-home');
+    });
+
+    document.getElementById('audioPlayPauseBtn').addEventListener('click', handlePlayPauseClick);
+
+    document.getElementById('audioReplayBtn').addEventListener('click', () => {
+        document.getElementById('replaySection').style.display = 'none';
+        playExplanation(state.currentText);
+    });
+
+    document.getElementById('errorHomeBtn').addEventListener('click', () => showScreen('screen-home'));
+}
+
+function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(el => el.classList.remove('active-screen'));
+
+    const target = document.getElementById(screenId);
+    if (target) {
+        target.classList.add('active-screen');
+        state.currentScreen = screenId;
+    }
+}
+
+async function handleAnalyzeClick() {
+    try {
+        showScreen('screen-loading');
+        updateLoadingStatus('Analyzing Page Content...', 'Please wait...');
 
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (!tab) throw new Error("No active tab found");
 
-        chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 60 }, async (dataUrl) => {
-            if (chrome.runtime.lastError) {
-                handleError(new Error(chrome.runtime.lastError.message));
-                return;
-            }
+        const dataUrl = await captureTab();
 
-            if (!dataUrl) {
-                handleError(new Error("Failed to capture snapshot"));
-                return;
-            }
+        if (!dataUrl) throw new Error("Failed to capture snapshot");
 
-            try {
-                const response = await fetch(`${BACKEND_URL}/analyze`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        mode: 'image',
-                        image: dataUrl,
-                        url: tab.url,
-                        title: tab.title
-                    })
-                });
-
-                if (!response.ok) {
-                    const errParams = await response.json().catch(() => ({}));
-                    throw new Error(errParams.error || `Server error: ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                handleAnalysisResponse({ success: true, explanation: data.explanationText });
-
-            } catch (netError) {
-                handleError(netError);
-            }
+        const response = await fetch(`${BACKEND_URL}/analyze`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                mode: 'image',
+                image: dataUrl,
+                url: tab.url,
+                title: tab.title
+            })
         });
 
+        if (!response.ok) {
+            const errParams = await response.json().catch(() => ({}));
+            throw new Error(errParams.error || `Server error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.success || !data.explanationText) {
+            throw new Error(data.error || "No explanation received");
+        }
+
+        state.currentText = data.explanationText;
+        playExplanation(state.currentText);
+
     } catch (error) {
-        handleError(error);
+        showError(error.message);
     }
 }
 
-function startStatusCycling() {
-    let index = 0;
-    setStatus('loading', 'Analyzing...');
-    statusDetail.textContent = LOADING_MESSAGES[0];
-
-    statusInterval = setInterval(() => {
-        index = (index + 1) % LOADING_MESSAGES.length;
-        statusDetail.textContent = LOADING_MESSAGES[index];
-    }, 4000);
+async function captureTab() {
+    return new Promise((resolve) => {
+        chrome.tabs.captureVisibleTab(null, { format: 'jpeg', quality: 60 }, (dataUrl) => {
+            if (chrome.runtime.lastError) {
+                console.error(chrome.runtime.lastError);
+                resolve(null);
+            } else {
+                resolve(dataUrl);
+            }
+        });
+    });
 }
 
-function stopStatusCycling() {
-    if (statusInterval) {
-        clearInterval(statusInterval);
-        statusInterval = null;
-    }
-    statusDetail.textContent = '';
+function updateLoadingStatus(main, sub) {
+    document.getElementById('loadingStatusText').textContent = main;
+    document.getElementById('loadingDetailText').textContent = sub;
 }
 
-function handleAnalysisResponse(response) {
-    if (!response) {
-        handleError(new Error('No response from background script'));
-        return;
-    }
-
-    if (!response.success) {
-        handleError(new Error(response.error || 'Unknown error'));
-        return;
-    }
-
-    playExplanation(response.explanation);
+function showError(msg) {
+    document.getElementById('errorMsgText').textContent = msg;
+    showScreen('screen-error');
 }
 
-const BACKEND_URL = 'http://localhost:3000';
+function saveSettings() {
+    const voice = document.getElementById('voiceSelector').value;
+    const speed = document.getElementById('speedSlider').value;
+
+    state.settings.voice = voice;
+    state.settings.speed = parseFloat(speed);
+
+    localStorage.setItem('voxel_voice', voice);
+    localStorage.setItem('voxel_speed', speed);
+}
 
 async function playExplanation(text) {
-    if (!text) {
-        handleError(new Error('No explanation text received'));
-        return;
-    }
+    stopSpeech();
+    resetAudioControlsVisibility();
 
-    const voiceSelector = document.getElementById('voiceSelector');
-    const selectedVoice = voiceSelector ? voiceSelector.value : 'default';
+    document.getElementById('audioStatusDisplay').textContent = 'Preparing Audio...';
+    document.getElementById('replaySection').style.display = 'none';
+    document.getElementById('audioPlayPauseBtn').textContent = '⏸ Pause';
+    document.querySelector('.audio-visualizer').style.opacity = '0.5';
 
-    if (selectedVoice === 'qwen') {
+    document.querySelector('.audio-visualizer').style.opacity = '0.5';
+
+    if (state.settings.voice === 'qwen') {
+        showScreen('screen-loading');
+        updateLoadingStatus('Generating Speech...', 'Processing AI Voice...');
         await playRemoteAudio(text);
     } else {
+        showScreen('screen-audio');
         playLocalPlayback(text);
     }
 }
@@ -144,87 +206,87 @@ async function playRemoteAudio(text) {
     try {
         const response = await fetch(`${BACKEND_URL}/tts`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 text: text,
                 style: "Speak like a professional news presenter"
             })
         });
 
-        if (!response.ok) {
-            throw new Error(`TTS Error: ${response.statusText}`);
-        }
+        if (!response.ok) throw new Error(`TTS Error: ${response.statusText}`);
 
         const arrayBuffer = await response.arrayBuffer();
         const blob = new Blob([arrayBuffer], { type: 'audio/wav' });
         const url = URL.createObjectURL(blob);
 
-        if (currentAudio) {
-            currentAudio.pause();
-            currentAudio = null;
-        }
+        state.currentAudio = new Audio(url);
 
-        currentAudio = new Audio(url);
+        showScreen('screen-audio');
 
-        currentAudio.onplay = () => {
-            stopStatusCycling();
-            isPlaying = true;
-            isPaused = false;
-            setStatus('playing', 'Playing (Presenter)...');
-            showPlaybackControls();
+        state.currentAudio.playbackRate = state.settings.speed;
+        state.currentAudio.preservesPitch = true;
+
+        state.currentAudio.onplay = () => {
+            state.isPlaying = true;
+            state.isPaused = false;
+            updateAudioUI('playing');
         };
 
-        currentAudio.onended = () => {
-            handleStopClick();
+        state.currentAudio.onended = () => {
+            handlePlaybackEnded();
             URL.revokeObjectURL(url);
         };
 
-        currentAudio.onerror = (e) => {
-            console.error("Audio playback error", e);
-            handleError(new Error("Audio playback failed"));
+        state.currentAudio.onerror = (e) => {
+            console.error("Audio Error", e);
+            showError("Audio playback failed");
         };
 
-        await currentAudio.play();
+        await state.currentAudio.play();
 
     } catch (error) {
-        handleError(error);
+        showError(error.message);
     }
 }
 
 function playLocalPlayback(text) {
-    stopStatusCycling();
-
     window.speechSynthesis.cancel();
-    currentUtterance = new SpeechSynthesisUtterance(text);
-    currentUtterance.rate = 1.0;
-    currentUtterance.pitch = 1.0;
-    currentUtterance.volume = 1.0;
+    state.currentUtterance = new SpeechSynthesisUtterance(text);
 
-    currentUtterance.onstart = () => {
-        isPlaying = true;
-        isPaused = false;
-        setStatus('playing', 'Playing...');
-        showPlaybackControls();
+    state.currentUtterance.rate = state.settings.speed;
+    state.currentUtterance.pitch = 1.0;
+
+    state.currentUtterance.onstart = () => {
+        state.isPlaying = true;
+        state.isPaused = false;
+        updateAudioUI('playing');
     };
 
-    currentUtterance.onend = () => {
-        handleStopClick();
+    state.currentUtterance.onend = () => {
+        handlePlaybackEnded();
     };
 
-    currentUtterance.onerror = (event) => {
-        if (event.error === 'interrupted' || event.error === 'canceled') {
-        } else {
-            handleError(new Error(`Speech error: ${event.error}`));
+    state.currentUtterance.onerror = (event) => {
+        if (event.error !== 'interrupted' && event.error !== 'canceled') {
+            showError(`Speech error: ${event.error}`);
         }
     };
 
-    window.speechSynthesis.speak(currentUtterance);
+    window.speechSynthesis.speak(state.currentUtterance);
 }
 
-function handlePauseClick() {
-    if (isPaused) {
+function stopSpeech() {
+    window.speechSynthesis.cancel();
+    if (state.currentAudio) {
+        state.currentAudio.pause();
+        state.currentAudio = null;
+    }
+    state.isPlaying = false;
+    state.isPaused = false;
+}
+
+function handlePlayPauseClick() {
+    if (state.isPaused) {
         resumeSpeech();
     } else {
         pauseSpeech();
@@ -232,92 +294,61 @@ function handlePauseClick() {
 }
 
 function pauseSpeech() {
-    if (currentAudio) {
-        currentAudio.pause();
+    if (state.currentAudio) {
+        state.currentAudio.pause();
     } else if (window.speechSynthesis.speaking) {
         window.speechSynthesis.pause();
     }
-    isPaused = true;
-    pauseBtn.textContent = '▶ Resume';
-    setStatus('playing', 'Paused');
+    state.isPaused = true;
+    updateAudioUI('paused');
 }
 
 function resumeSpeech() {
-    if (currentAudio) {
-        currentAudio.play();
+    if (state.currentAudio) {
+        state.currentAudio.play();
     } else if (window.speechSynthesis.paused) {
         window.speechSynthesis.resume();
     }
-    isPaused = false;
-    pauseBtn.textContent = '⏸ Pause';
-    setStatus('playing', 'Playing...');
+    state.isPaused = false;
+    updateAudioUI('playing');
 }
 
-function handleStopClick() {
-    stopSpeech();
-    setStatus('idle', 'Ready');
-    hidePlaybackControls();
+function handlePlaybackEnded() {
+    state.isPlaying = false;
+    state.isPaused = false;
+    updateAudioUI('ended');
 }
 
-function stopSpeech() {
-    stopStatusCycling();
-    window.speechSynthesis.cancel();
-    if (currentAudio) {
-        currentAudio.pause();
-        currentAudio = null;
-    }
-    isPlaying = false;
-    isPaused = false;
-    currentUtterance = null;
+function updateAudioUI(status) {
+    const playPauseBtn = document.getElementById('audioPlayPauseBtn');
+    const statusDisplay = document.getElementById('audioStatusDisplay');
+    const visualizer = document.querySelector('.audio-visualizer');
+    const replaySection = document.getElementById('replaySection');
 
-    if (pauseBtn) pauseBtn.textContent = '⏸ Pause';
-}
+    if (status === 'playing') {
+        playPauseBtn.textContent = '⏸ Pause';
+        statusDisplay.textContent = 'Playing...';
+        visualizer.style.opacity = '1';
+        document.querySelector('.audio-controls').style.display = 'flex';
+        playPauseBtn.style.display = 'block';
+        replaySection.style.display = 'none';
 
-function setStatus(state, text) {
-    statusText.textContent = text;
-    statusDot.className = 'status-dot';
+    } else if (status === 'paused') {
+        playPauseBtn.textContent = '▶ Resume';
+        statusDisplay.textContent = 'Paused';
+        visualizer.style.opacity = '0.5';
 
-    if (state === 'idle') {
-        statusDot.classList.add('status-idle');
-    } else if (state === 'loading') {
-        statusDot.classList.add('status-loading');
-    } else if (state === 'playing') {
-        statusDot.classList.add('status-playing');
-    } else if (state === 'error') {
-        statusDot.classList.add('status-error');
+    } else if (status === 'ended') {
+        document.querySelector('.audio-controls').style.display = 'none';
+        statusDisplay.textContent = 'Finished';
+        visualizer.style.opacity = '0.2';
+        replaySection.style.display = 'flex';
     }
 }
 
-function showPlaybackControls() {
-    playbackControls.style.display = 'flex';
-    initialControls.style.display = 'none';
-}
 
-function hidePlaybackControls() {
-    playbackControls.style.display = 'none';
-    initialControls.style.display = 'flex';
+function resetAudioControlsVisibility() {
+    document.querySelector('.audio-controls').style.display = 'flex';
+    document.getElementById('audioPlayPauseBtn').style.display = 'block';
+    document.getElementById('replaySection').style.display = 'none';
 }
-
-function showInfo(message) {
-    infoText.textContent = message;
-    infoSection.style.display = 'block';
-}
-
-function hideInfo() {
-    infoSection.style.display = 'none';
-}
-
-function handleError(error) {
-    console.error('Nova AI error:', error);
-    stopStatusCycling();
-    setStatus('error', 'Error');
-    showInfo(error.message);
-    stopSpeech();
-    hidePlaybackControls();
-    initialControls.style.display = 'flex';
-    explainBtn.disabled = false;
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    setStatus('idle', 'Ready');
-});

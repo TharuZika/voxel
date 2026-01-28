@@ -4,57 +4,118 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Nova AI</title>
+  <title>Vision-AI</title>
   <link rel="stylesheet" href="ui.css" />
   <link rel="icon" type="image/x-icon" href="icons/favicon.ico" />
 </head>
 
 <body>
-  <div class="container">
-    <header class="header">
-      <h1>Nova AI</h1>
-      <span class="tagline">AI Powered Page Reader</span>
+  <div class="app-container">
+    <header class="global-header">
+      <div class="brand">
+        <img src="icons/view.png" alt="Logo" class="logo-img">
+        <h1 class="logo-text">Vision-AI</h1>
+      </div>
+      <div class="header-actions">
+        <button id="headerSettingsBtn" class="icon-btn" aria-label="Settings">
+          <img src="icons/settings.png" alt="Settings" class="action-icon-img">
+        </button>
+        <button id="headerCloseBtn" class="icon-btn" aria-label="Close">
+          ✕
+        </button>
+      </div>
     </header>
 
-    <section class="status-section">
-      <div class="status-indicator">
-        <span class="status-dot status-idle" id="statusDot"></span>
-        <span class="status-text" id="statusText">Ready</span>
-      </div>
-      <div class="status-detail" id="statusDetail"></div>
-    </section>
+    <main class="main-content">
 
-    <section class="controls">
-      <div class="controls-group" id="initialControls">
-        <button id="explainBtn" class="primary-btn">
-          <span class="btn-icon">▶</span>
-          Explain Page
-        </button>
-        <div class="voice-selection-container">
-          <select id="voiceSelector" class="voice-selector">
-            <option value="qwen" selected>Presenter (Quality)</option>
-            <option value="default">Default (Faster)</option>
-          </select>
-          <div class="info-icon" data-tooltip="Default mode is faster">
-            ℹ️
+      <div id="screen-home" class="screen active-screen">
+        <div class="home-content">
+          <div class="hero-section">
+            <p class="hero-subtitle">AI Powered Page Content Reader</p>
+          </div>
+
+          <button id="analyzeBtn" class="primary-btn big-btn">
+            Analyze Page
+          </button>
+          <hr>
+        </div>
+      </div>
+
+      <div id="screen-settings" class="screen">
+        <div class="settings-content">
+          <h2>Settings</h2>
+
+          <div class="setting-group">
+            <label for="voiceSelector">Voice Mode</label>
+            <div class="select-wrapper">
+              <select id="voiceSelector" class="voice-selector">
+                <option value="qwen" selected>Presenter (Quality)</option>
+                <option value="default">Default (Faster)</option>
+              </select>
+            </div>
+            <p class="setting-hint">Presenter mode uses advanced AI, so it takes time to process speech</p>
+          </div>
+
+          <div class="setting-group">
+            <label for="speedSlider">Speech Speed</label>
+            <div class="speed-control-row">
+              <input type="range" id="speedSlider" min="0.5" max="2" step="0.25" value="1">
+              <span id="speedValue">Normal</span>
+            </div>
+          </div>
+
+          <div class="actions-footer">
+            <button id="saveSettingsBtn" class="primary-btn">Save Settings</button>
           </div>
         </div>
       </div>
 
-      <div class="playback-controls" id="playbackControls" style="display: none;">
-        <button id="pauseBtn" class="secondary-btn"
-          style="margin-right: 10px; padding-left: 10px; padding-right: 10px;">
-          ⏸ Pause
-        </button>
-        <button id="stopBtn" class="secondary-btn" style="padding-left: 10px; padding-right: 10px;">
-          ⏹ Stop
-        </button>
+      <div id="screen-loading" class="screen">
+        <div class="loading-content">
+          <div class="spinner"></div>
+          <h3 id="loadingStatusText">Analyzing Page Content...</h3>
+          <p id="loadingDetailText" class="subtext">Please wait...</p>
+        </div>
       </div>
-    </section>
 
-    <section class="info-section" id="infoSection" style="display: none;">
-      <p id="infoText"></p>
-    </section>
+      <div id="screen-audio" class="screen">
+        <div class="audio-content">
+          <div class="audio-visualizer">
+            <div class="wave"></div>
+            <div class="wave"></div>
+            <div class="wave"></div>
+            <div class="wave"></div>
+          </div>
+
+          <div id="audioStatusDisplay" class="audio-status">Playing...</div>
+
+          <div class="audio-controls">
+            <button id="audioStopBtn" class="control-btn stop-btn">
+              ⏹ Stop
+            </button>
+            <button id="audioPlayPauseBtn" class="control-btn play-btn">
+              ⏸ Pause
+            </button>
+          </div>
+
+          <div id="replaySection" class="replay-section" style="display: none;">
+            <button id="audioReplayBtn" class="secondary-btn">
+              🔄 Replay
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="screen-error" class="screen">
+        <div class="error-content">
+          <img src="icons/warning.png" alt="Error" class="error-icon-img">
+          <h3>Something went wrong</h3>
+          <p id="errorMsgText">Unknown error occurred.</p>
+          <button id="errorHomeBtn" class="secondary-btn">Back to Home</button>
+        </div>
+      </div>
+
+    </main>
   </div>
 
   <script src="popup.js"></script>
