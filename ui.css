@@ -18,7 +18,7 @@
 
 body {
   width: 350px;
-  min-height: 300px;
+  min-height: 420px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--bg);
   color: var(--text-main);
@@ -28,7 +28,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  min-height: 300px;
+  min-height: 420px;
 }
 
 .global-header {
@@ -395,4 +395,61 @@ body {
   color: var(--text-sub);
   font-size: 14px;
   max-width: 260px;
+}
+
+.voice-options {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+.radio-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: white;
+  min-height: 40px;
+  text-align: center;
+}
+
+.radio-card:hover {
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+.radio-card:has(input:checked) {
+  border-color: var(--primary);
+  background: #f0f9ff;
+  box-shadow: 0 0 0 1px var(--primary) inset;
+}
+
+.radio-card input[type="radio"] {
+  display: none;
+}
+
+.radio-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  align-items: center;
+}
+
+.radio-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.radio-desc {
+  font-size: 10px;
+  color: var(--text-sub);
+  margin-top: 2px;
 }

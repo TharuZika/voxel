@@ -30,7 +30,12 @@ function loadSettings() {
     const speedSlider = document.getElementById('speedSlider');
     const speedValue = document.getElementById('speedValue');
 
-    if (voiceSelector) voiceSelector.value = state.settings.voice;
+    if (savedVoice) {
+        state.settings.voice = savedVoice;
+    }
+
+    const radio = document.querySelector(`input[name="voice"][value="${state.settings.voice}"]`);
+    if (radio) radio.checked = true;
     if (speedSlider) {
         speedSlider.value = state.settings.speed;
         speedValue.textContent = getSpeedLabel(state.settings.speed);
@@ -171,7 +176,8 @@ function showError(msg) {
 }
 
 function saveSettings() {
-    const voice = document.getElementById('voiceSelector').value;
+    const selectedRadio = document.querySelector('input[name="voice"]:checked');
+    const voice = selectedRadio ? selectedRadio.value : 'qwen';
     const speed = document.getElementById('speedSlider').value;
 
     state.settings.voice = voice;

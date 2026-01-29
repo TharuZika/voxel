@@ -47,11 +47,21 @@
 
           <div class="setting-group">
             <label for="voiceSelector">Voice Mode</label>
-            <div class="select-wrapper">
-              <select id="voiceSelector" class="voice-selector">
-                <option value="qwen" selected>Presenter (Quality)</option>
-                <option value="default">Default (Faster)</option>
-              </select>
+            <div class="voice-options">
+              <label class="radio-card">
+                <input type="radio" name="voice" value="qwen" checked>
+                <div class="radio-content">
+                  <span class="radio-title">Presenter</span>
+                  <span class="radio-desc">High Quality AI Voice</span>
+                </div>
+              </label>
+              <label class="radio-card">
+                <input type="radio" name="voice" value="default">
+                <div class="radio-content">
+                  <span class="radio-title">Standard</span>
+                  <span class="radio-desc">Faster Native Voice</span>
+                </div>
+              </label>
             </div>
             <p class="setting-hint">Presenter mode uses advanced AI, so it takes time to process speech</p>
           </div>
